@@ -1,0 +1,202 @@
+{% extends "directorio/base.html" %}
+{% load static %}
+
+{% block title %}{{ giro.nombre }} — Directorio Turístico{% endblock %}
+
+{% block contenido %}
+
+<div class="breadcrumb">
+  <a href="{% url 'directorio:index' %}">Inicio</a>
+  <span class="sep">›</span>
+  <span>{{ giro.nombre }}</span>
+</div>
+
+<div class="giro-hero">
+  <h1>
+    {% if giro.icono %}{{ giro.icono }} {% endif %}{{ giro.nombre }}
+  </h1>
+  <p class="subtitulo">
+    {{ por_municipio|length }} municipio{{ por_municipio|length|pluralize }} con este giro
+  </p>
+</div>
+
+{% for municipio, negocios in por_municipio.items %}
+  <div class="municipio-seccion">
+    <div class="municipio-header">
+      <h2>
+        📍 {{ municipio.nombre }}
+        <span class="contador">{{ negocios|length }}</span>
+      </h2>
+      <a href="{% url 'directorio:municipio_detalle' municipio.slug %}" class="link-ver-todos">
+        Ver todo el municipio →
+      </a>
+    </div>
+
+    <div class="negocios-grid">
+      {% for n in negocios %}
+        <a href="{% url 'directorio:negocio_detalle' n.slug %}" class="negocio-card">
+          <div class="negocio-foto"
+               {% if n.logo_url %}style="background-image:url('{{ n.logo_url }}');"{% endif %}>
+            {% if not n.logo_url %}
+              <div class="logo-vacio">{{ n.nombre|slice:":1"|upper }}</div>
+            {% endif %}
+            {% if n.destacado %}
+              <span class="badge-destacado">★</span>
+            {% endif %}
+          </div>
+          <div class="negocio-info">
+            <h3>{{ n.nombre }}</h3>
+            {% if n.descripcion %}
+              <p>{{ n.descripcion|truncatechars:80 }}</p>
+            {% endif %}
+            {% if n.telefono %}
+              <p class="tel">📞 {{ n.telefono }}</p>
+            {% endif %}
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+{% empty %}
+  <div class="sin-resultados">
+    <h3>No hay negocios con este giro</h3>
+    <a href="{% url 'directorio:index' %}" class="btn-volver">← Volver al directorio</a>
+  </div>
+{% endfor %}
+
+{% endblock %}
+
+
+{% block extra_css %}
+<style>
+  .breadcrumb {
+    font-size: .82rem; color: #888;
+    margin-bottom: 1rem; padding: .5rem 0;
+  }
+  .breadcrumb a { color: #7A1B3A; text-decoration: none; }
+  .breadcrumb .sep { margin: 0 .4rem; color: #ccc; }
+
+  .giro-hero {
+    background: linear-gradient(135deg, #7A1B3A 0%, #a32554 100%);
+    color: #fff;
+    border-radius: 10px;
+    padding: 2rem 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 12px rgba(122,27,58,.25);
+  }
+  .giro-hero h1 {
+    font-size: 2rem;
+    margin-bottom: .3rem;
+  }
+  .giro-hero .subtitulo {
+    font-size: .95rem;
+    opacity: .9;
+    margin: 0;
+  }
+
+  .municipio-seccion { margin-bottom: 2rem; }
+  .municipio-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: .5rem;
+    border-bottom: 2px solid #f4b400;
+    flex-wrap: wrap;
+    gap: .5rem;
+  }
+  .municipio-header h2 {
+    color: #7A1B3A;
+    font-size: 1.15rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  .contador {
+    background: #7A1B3A;
+    color: #fff;
+    font-size: .75rem;
+    padding: .15rem .5rem;
+    border-radius: 10px;
+    font-weight: 700;
+  }
+  .link-ver-todos {
+    color: #7A1B3A;
+    text-decoration: none;
+    font-size: .85rem;
+    font-weight: 600;
+  }
+  .link-ver-todos:hover { text-decoration: underline; }
+
+  .negocios-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem;
+  }
+  .negocio-card {
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    text-decoration: none;
+    color: #222;
+    box-shadow: 0 2px 6px rgba(0,0,0,.06);
+    transition: transform .15s, box-shadow .15s;
+    display: flex;
+    flex-direction: column;
+  }
+  .negocio-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(0,0,0,.12);
+  }
+  .negocio-foto {
+    height: 160px;
+    background: #f4f6f9 center/cover no-repeat;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .logo-vacio {
+    width: 80px; height: 80px; border-radius: 50%;
+    background: #7A1B3A; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; font-weight: 700;
+  }
+  .badge-destacado {
+    position: absolute; top: 8px; right: 8px;
+    background: #f4b400; color: #fff;
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,.2);
+  }
+  .negocio-info {
+    padding: 1rem; flex: 1;
+    display: flex; flex-direction: column;
+  }
+  .negocio-info h3 {
+    color: #7A1B3A; font-size: 1rem;
+    margin: 0 0 .4rem; line-height: 1.3;
+  }
+  .negocio-info p {
+    font-size: .85rem; color: #666;
+    line-height: 1.4; margin: 0 0 .4rem; flex: 1;
+  }
+  .negocio-info .tel {
+    color: #7A1B3A; font-weight: 600;
+    font-size: .82rem; margin-top: auto;
+  }
+
+  .sin-resultados {
+    background: #fff; border-radius: 10px;
+    padding: 3rem 1.5rem; text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  }
+  .sin-resultados h3 { color: #7A1B3A; margin-bottom: 1rem; }
+  .btn-volver {
+    display: inline-block; padding: .6rem 1.5rem;
+    background: #7A1B3A; color: #fff;
+    border-radius: 6px; text-decoration: none; font-weight: 600;
+  }
+</style>
+{% endblock %}

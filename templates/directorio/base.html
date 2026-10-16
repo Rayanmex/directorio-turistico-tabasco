@@ -1,0 +1,206 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Directorio Turístico{% endblock %}</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'css/institucional.css' %}">
+<style>
+  /* ===== TOPBAR ===== */
+  .topbar {
+    background: #7A1B3A;
+    color: #fff;
+    padding: .7rem 1.5rem;
+  }
+  .topbar-inner {
+    max-width: 1300px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .topbar-logo {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    text-decoration: none;
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.05rem;
+    white-space: nowrap;
+  }
+  .topbar-logo img {
+    height: 32px;
+  }
+
+  /* Menú central */
+  .topbar-nav {
+    display: flex;
+    gap: .2rem;
+    flex: 1;
+    flex-wrap: wrap;
+  }
+  .topbar-nav a {
+    color: rgba(255,255,255,.9);
+    text-decoration: none;
+    padding: .45rem .9rem;
+    border-radius: 4px;
+    font-size: .88rem;
+    font-weight: 500;
+    transition: background .15s;
+    white-space: nowrap;
+  }
+  .topbar-nav a:hover {
+    background: rgba(255,255,255,.12);
+    color: #fff;
+  }
+  .topbar-nav a.activo {
+    background: rgba(255,255,255,.22);
+    color: #fff;
+    font-weight: 600;
+  }
+
+  /* Acciones derecha (Imágenes, PDF, usuario, logout) */
+  .topbar-acciones {
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .topbar-acciones a,
+  .topbar-acciones button {
+    color: #fff;
+    text-decoration: none;
+    font-size: .82rem;
+    padding: .4rem .75rem;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,.35);
+    background: transparent;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .15s, border-color .15s;
+    white-space: nowrap;
+  }
+  .topbar-acciones a:hover,
+  .topbar-acciones button:hover {
+    background: rgba(255,255,255,.15);
+  }
+
+  .topbar-user {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding-left: 1rem;
+    margin-left: .3rem;
+    border-left: 1px solid rgba(255,255,255,.25);
+  }
+  .topbar-user .user-name {
+    font-size: .85rem;
+    color: rgba(255,255,255,.85);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .topbar-user .btn-logout {
+    color: #fff;
+    text-decoration: none;
+    font-size: .82rem;
+    padding: .4rem .8rem;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,.35);
+    background: transparent;
+    transition: background .15s, border-color .15s;
+    white-space: nowrap;
+  }
+  .topbar-user .btn-logout:hover {
+    background: #c62828;
+    border-color: #c62828;
+    color: #fff;
+  }
+
+  /* ===== LAYOUT ===== */
+  body {
+    font-family: 'Montserrat', system-ui, sans-serif;
+    background: #f4f6f9;
+    color: #222;
+    margin: 0;
+  }
+  .contenedor {
+    max-width: 1200px;
+    margin: 1.5rem auto;
+    padding: 0 1rem;
+  }
+
+  @media (max-width: 900px) {
+    .topbar-inner { flex-direction: column; align-items: stretch; }
+    .topbar-acciones { justify-content: space-between; }
+    .topbar-user {
+      padding-left: 0;
+      border-left: 0;
+      margin-left: 0;
+    }
+  }
+</style>
+{% block extra_css %}{% endblock %}
+</head>
+<body>
+
+{# ============ TOPBAR ============ #}
+<div class="topbar">
+  <div class="topbar-inner">
+    <a href="{% url 'directorio:index' %}" class="topbar-logo">
+      <img src="{% static 'img/logos/b2logo.png' %}" alt="Logo">
+      <span>Directorio Turístico</span>
+    </a>
+
+    <nav class="topbar-nav">
+      <a href="{% url 'directorio:index' %}"
+         class="{% if seccion == 'inicio' %}activo{% endif %}">
+        Inicio
+      </a>
+      <a href="{% url 'directorio:panel' %}"
+         class="{% if seccion == 'panel' %}activo{% endif %}">
+        Panel
+      </a>
+    </nav>
+
+    <div class="topbar-acciones">
+      <a href="{% url 'directorio:panel_imagenes' %}">🖼️ Imágenes</a>
+      <form method="post" action="{% url 'directorio:generar_pdf_rapido' %}" style="margin:0;display:inline;">
+        {% csrf_token %}
+        <button type="submit">📄 Generar PDF</button>
+      </form>
+
+      {% if user.is_authenticated %}
+        <div class="topbar-user">
+          <span class="user-name">👤 {{ user.username }}</span>
+          <a href="{% url 'directorio:logout' %}" class="btn-logout">
+            Cerrar sesión
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{# ============ CONTENIDO ============ #}
+<div class="contenedor">
+
+  {% if messages %}
+    {% for msg in messages %}
+      <div class="aviso aviso-{% if msg.tags == 'error' %}error{% elif msg.tags == 'warning' %}warning{% else %}success{% endif %}">
+        {{ msg }}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  {% block contenido %}{% endblock %}
+
+</div>
+
+{% block extra_js %}{% endblock %}
+
+</body>
+</html>

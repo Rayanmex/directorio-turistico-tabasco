@@ -1,0 +1,41 @@
+{% extends "directorio/base.html" %}
+{% block title %}Experiencias — Directorio Turístico{% endblock %}
+
+{% block contenido %}
+<div class="page-header">
+  <h1>🎯 Experiencias ({{ experiencias|length }})</h1>
+  <a href="{% url 'directorio:panel' %}" class="btn btn-blanco">← Panel</a>
+</div>
+
+<form method="get" class="busqueda-wrap">
+  <div class="busqueda">
+    <input type="text" name="q" value="{{ q }}" placeholder="Buscar experiencia...">
+  </div>
+  <button type="submit" class="btn btn-primario">Buscar</button>
+</form>
+
+<div class="tabla-wrap">
+  <table class="tabla">
+    <thead>
+      <tr>
+        <th>Experiencia</th>
+        <th>Operador</th>
+        <th>Municipio</th>
+        <th>Teléfono</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in experiencias %}
+        <tr>
+          <td><strong>{{ e.nombre }}</strong></td>
+          <td>{{ e.operador.nombre|default:e.operador_original|default:"—" }}</td>
+          <td>{{ e.municipio.nombre|default:e.municipio_original|default:"—" }}</td>
+          <td>{{ e.telefono|default:"—" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4" class="vacio">No hay experiencias.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

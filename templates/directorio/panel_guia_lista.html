@@ -1,0 +1,43 @@
+{% extends "directorio/base.html" %}
+{% block title %}Guías — Directorio Turístico{% endblock %}
+
+{% block contenido %}
+<div class="page-header">
+  <h1>🧭 Guías ({{ guias|length }})</h1>
+  <a href="{% url 'directorio:panel' %}" class="btn btn-blanco">← Panel</a>
+</div>
+
+<form method="get" class="busqueda-wrap">
+  <div class="busqueda">
+    <input type="text" name="q" value="{{ q }}" placeholder="Buscar guía...">
+  </div>
+  <button type="submit" class="btn btn-primario">Buscar</button>
+</form>
+
+<div class="tabla-wrap">
+  <table class="tabla">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Credencial</th>
+        <th>Idiomas</th>
+        <th>Municipio</th>
+        <th>Teléfono</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for g in guias %}
+        <tr>
+          <td><strong>{{ g.nombre }}</strong></td>
+          <td>{{ g.credencial|default:"—" }}</td>
+          <td>{{ g.idiomas|default:"—" }}</td>
+          <td>{{ g.municipio.nombre|default:g.municipio_original|default:"—" }}</td>
+          <td>{{ g.telefono|default:"—" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5" class="vacio">No hay guías.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

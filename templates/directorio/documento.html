@@ -1,0 +1,105 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Directorio Turístico — Documento</title>
+<link rel="stylesheet" href="{% static 'css/documento.css' %}">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="{% if pdf_mode %}pdf-mode{% endif %}">
+
+{# ============================================================ #}
+{# PORTADA (solo en el PDF completo)                            #}
+{# ============================================================ #}
+{% if mostrar_portada %}
+  <section class="hoja-portada"></section>
+{% endif %}
+
+{# ============================================================ #}
+{# HOJAS INTERIORES                                             #}
+{# Cada hoja = 1 grupo_principal + 1 subgrupo + hasta 3 negocios#}
+{# ============================================================ #}
+{% for pagina in paginas %}
+  <section class="hoja">
+
+    {# Título de la sección: municipio · giro (o giro · municipio) #}
+    <div class="titulo-mando">
+      {{ pagina.grupo_principal }}
+      {% if pagina.subgrupo %}
+        · {{ pagina.subgrupo }}
+      {% endif %}
+      {% if pagina.es_continuacion %}
+        <span class="continuacion">(continuación)</span>
+      {% endif %}
+    </div>
+
+    {# Contenido: hasta 3 negocios #}
+    <div class="contenido" data-count="{{ pagina.negocios|length }}">
+
+      {% for negocio in pagina.negocios %}
+        <div class="negocio">
+
+          {# --- LOGO / FOTO --- #}
+          <div class="cuadro-foto">
+            {% if negocio.logo_url %}
+              <img class="foto" src="{{ negocio.logo_url }}" alt="{{ negocio.nombre }}">
+            {% else %}
+              <div class="foto-placeholder">{{ negocio.nombre|slice:":1"|upper }}</div>
+            {% endif %}
+          </div>
+
+          {# --- DATOS --- #}
+          <div class="datos">
+            <div class="nombre">{{ negocio.nombre }}</div>
+
+            {% if negocio.giro %}
+              <div class="giro">
+                {% if negocio.giro.icono %}{{ negocio.giro.icono }} {% endif %}{{ negocio.giro.nombre }}
+              </div>
+            {% endif %}
+
+            <div class="contacto">
+              {% if negocio.direccion %}
+                <div class="direccion">{{ negocio.direccion|truncatechars:80 }}</div>
+              {% endif %}
+              {% if negocio.telefono %}
+                <div class="telefono">📞 {{ negocio.telefono }}</div>
+              {% endif %}
+            </div>
+
+            {% if negocio.descripcion %}
+              <div class="descripcion">
+                {{ negocio.descripcion|truncatechars:120 }}
+              </div>
+            {% endif %}
+
+            {% if negocio.redes.all %}
+              <div class="redes">
+                {% for r in negocio.redes.all %}
+                  <span class="red-item">
+                    {% if r.tipo == 'facebook' %}f
+                    {% elif r.tipo == 'instagram' %}ig
+                    {% elif r.tipo == 'tiktok' %}tk
+                    {% elif r.tipo == 'whatsapp' %}wa
+                    {% elif r.tipo == 'youtube' %}yt
+                    {% elif r.tipo == 'twitter' %}x
+                    {% else %}🌐{% endif %}
+                  </span>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+
+        </div>
+      {% endfor %}
+
+    </div>
+  </section>
+{% endfor %}
+
+</body>
+</html>

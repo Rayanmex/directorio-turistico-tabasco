@@ -1,0 +1,547 @@
+{% extends "directorio/base.html" %}
+{% load static %}
+
+{% block title %}{{ negocio.nombre }} — Directorio Turístico{% endblock %}
+
+{% block contenido %}
+
+{# ============ BREADCRUMB ============ #}
+<div class="breadcrumb">
+  <a href="{% url 'directorio:index' %}">Inicio</a>
+  <span class="sep">›</span>
+  {% if negocio.municipio %}
+    <a href="{% url 'directorio:municipio_detalle' negocio.municipio.slug %}">{{ negocio.municipio.nombre }}</a>
+  {% elif negocio.municipio_original %}
+    <span>{{ negocio.municipio_original }}</span>
+  {% endif %}
+  {% if negocio.giro %}
+    <span class="sep">›</span>
+    <a href="{% url 'directorio:giro_detalle' negocio.giro.slug %}">{{ negocio.giro.nombre }}</a>
+  {% endif %}
+  <span class="sep">›</span>
+  <span>{{ negocio.nombre }}</span>
+</div>
+
+{# ============ HEADER ============ #}
+<div class="ficha-header">
+
+  {# Logo #}
+  <div class="ficha-logo">
+    {% if negocio.logo_url %}
+      <img src="{{ negocio.logo_url }}" alt="{{ negocio.nombre }}">
+    {% else %}
+      <div class="logo-vacio">{{ negocio.nombre|slice:":1"|upper }}</div>
+    {% endif %}
+  </div>
+
+  {# Info principal #}
+  <div class="ficha-info">
+    <h1>
+      {{ negocio.nombre }}
+      {% if negocio.destacado %}<span class="badge-destacado" title="Destacado">★</span>{% endif %}
+    </h1>
+
+    <div class="ficha-tags">
+      {% if negocio.giro %}
+        <a href="{% url 'directorio:giro_detalle' negocio.giro.slug %}" class="tag">
+          {% if negocio.giro.icono %}{{ negocio.giro.icono }} {% endif %}{{ negocio.giro.nombre }}
+        </a>
+      {% endif %}
+      {% if negocio.municipio %}
+        <a href="{% url 'directorio:municipio_detalle' negocio.municipio.slug %}" class="tag">
+          📍 {{ negocio.municipio.nombre }}
+        </a>
+      {% elif negocio.municipio_original %}
+        <span class="tag">📍 {{ negocio.municipio_original }}</span>
+      {% endif %}
+    </div>
+
+    {# Contacto rápido #}
+    <div class="ficha-contacto">
+      {% if negocio.direccion %}
+        <div class="contacto-item">
+          <span class="icono">🏠</span>
+          <span>{{ negocio.direccion }}</span>
+        </div>
+      {% endif %}
+      {% if negocio.telefono %}
+        <div class="contacto-item">
+          <span class="icono">📞</span>
+          <a href="tel:{{ negocio.telefono_limpio }}">{{ negocio.telefono }}</a>
+        </div>
+      {% endif %}
+      {% if negocio.email %}
+        <div class="contacto-item">
+          <span class="icono">✉️</span>
+          <a href="mailto:{{ negocio.email }}">{{ negocio.email }}</a>
+        </div>
+      {% endif %}
+      {% if negocio.sitio_web %}
+        <div class="contacto-item">
+          <span class="icono">🌐</span>
+          <a href="{{ negocio.sitio_web }}" target="_blank">{{ negocio.sitio_web }}</a>
+        </div>
+      {% endif %}
+    </div>
+
+    {# Botones de acción #}
+    <div class="ficha-acciones">
+      {% if negocio.telefono %}
+        <a href="https://wa.me/52{{ negocio.telefono_limpio }}" target="_blank" class="btn-wa">
+          💬 WhatsApp
+        </a>
+      {% endif %}
+      {% if negocio.latitud and negocio.longitud %}
+        <a href="https://www.google.com/maps/search/?api=1&query={{ negocio.latitud }},{{ negocio.longitud }}"
+           target="_blank" class="btn-maps">
+          📍 Ver en mapa
+        </a>
+      {% elif negocio.direccion %}
+        <a href="https://www.google.com/maps/search/?api=1&query={{ negocio.direccion|urlencode }}"
+           target="_blank" class="btn-maps">
+          📍 Ver en mapa
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+{# ============ REDES SOCIALES ============ #}
+{% if negocio.redes.all %}
+  <div class="seccion">
+    <h2>Redes sociales</h2>
+    <div class="redes-grid">
+      {% for r in negocio.redes.all %}
+        <a href="{{ r.url }}" target="_blank" class="red-card red-{{ r.tipo }}">
+          <span class="red-tipo">{{ r.get_tipo_display }}</span>
+          <span class="red-usuario">{{ r.usuario|truncatechars:30 }}</span>
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+{# ============ DESCRIPCIÓN ============ #}
+{% if negocio.descripcion %}
+  <div class="seccion">
+    <h2>Sobre {{ negocio.nombre }}</h2>
+    <div class="descripcion">
+      {{ negocio.descripcion|linebreaks }}
+    </div>
+  </div>
+{% endif %}
+
+{# ============ GALERÍA ============ #}
+{% if negocio.galeria %}
+  <div class="seccion">
+    <h2>Galería de fotos</h2>
+    <div class="galeria-grid">
+      {% for f in negocio.galeria %}
+        <div class="galeria-item"
+             style="background-image:url('{{ f.url }}');"
+             onclick="abrirFoto('{{ f.url }}')">
+          <div class="overlay">
+            <span>Ver foto</span>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+{# ============ EXPERIENCIAS VINCULADAS ============ #}
+{% if negocio.experiencias.all %}
+  <div class="seccion">
+    <h2>Experiencias y servicios</h2>
+    <div class="experiencias-lista">
+      {% for exp in negocio.experiencias.all %}
+        <div class="experiencia-card">
+          <div class="experiencia-info">
+            <h3>{{ exp.nombre }}</h3>
+            {% if exp.descripcion %}
+              <p>{{ exp.descripcion|truncatechars:200 }}</p>
+            {% endif %}
+            <div class="experiencia-meta">
+              {% if exp.duracion %}<span>⏱️ {{ exp.duracion }}</span>{% endif %}
+              {% if exp.telefono %}<span>📞 {{ exp.telefono }}</span>{% endif %}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+{# ============ MAPA ============ #}
+{% if negocio.latitud and negocio.longitud %}
+  <div class="seccion">
+    <h2>Ubicación</h2>
+    <div class="mapa-wrap">
+      <iframe
+        width="100%"
+        height="380"
+        frameborder="0"
+        style="border:0;border-radius:8px;"
+        src="https://www.openstreetmap.org/export/embed.html?bbox={{ negocio.longitud|floatformat:6 }},{{ negocio.latitud|floatformat:6 }},{{ negocio.longitud|floatformat:6 }},{{ negocio.latitud|floatformat:6 }}&layer=mapnik&marker={{ negocio.latitud }},{{ negocio.longitud }}"
+        allowfullscreen>
+      </iframe>
+    </div>
+  </div>
+{% elif negocio.direccion %}
+  <div class="seccion">
+    <h2>Ubicación</h2>
+    <div class="direccion-wrap">
+      <p>📍 {{ negocio.direccion }}</p>
+      <a href="https://www.google.com/maps/search/?api=1&query={{ negocio.direccion|urlencode }}"
+         target="_blank" class="btn-maps">
+        Abrir en Google Maps
+      </a>
+    </div>
+  </div>
+{% endif %}
+
+{# ============ VOLVER ============ #}
+<div class="volver-wrap">
+  <a href="{% url 'directorio:index' %}" class="btn-volver">← Volver al directorio</a>
+</div>
+
+{# ============ MODAL PARA VER FOTO GRANDE ============ #}
+<div id="modal-foto" class="modal-foto" onclick="cerrarFoto()">
+  <div class="modal-foto-inner" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="cerrarFoto()">✕</button>
+    <img id="modal-foto-img" src="" alt="">
+  </div>
+</div>
+
+{% endblock %}
+
+
+{% block extra_css %}
+<style>
+  /* ===== BREADCRUMB ===== */
+  .breadcrumb {
+    font-size: .82rem;
+    color: #888;
+    margin-bottom: 1rem;
+    padding: .5rem 0;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .breadcrumb a {
+    color: #7A1B3A;
+    text-decoration: none;
+  }
+  .breadcrumb a:hover { text-decoration: underline; }
+  .breadcrumb .sep { margin: 0 .4rem; color: #ccc; }
+
+  /* ===== HEADER ===== */
+  .ficha-header {
+    display: flex;
+    gap: 2rem;
+    background: #fff;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .ficha-logo {
+    flex-shrink: 0;
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 4px solid #f4b400;
+    background: #f4f6f9 center/cover no-repeat;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ficha-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .logo-vacio {
+    font-size: 4rem;
+    font-weight: 700;
+    color: #7A1B3A;
+    background: #fff;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ficha-info { flex: 1; min-width: 300px; }
+  .ficha-info h1 {
+    color: #7A1B3A;
+    font-size: 1.8rem;
+    margin-bottom: .8rem;
+    line-height: 1.2;
+  }
+  .badge-destacado {
+    color: #f4b400;
+    font-size: 1.4rem;
+    margin-left: .3rem;
+    vertical-align: middle;
+  }
+
+  .ficha-tags {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  .tag {
+    display: inline-block;
+    background: #f4f6f9;
+    color: #555;
+    padding: .35rem .8rem;
+    border-radius: 20px;
+    font-size: .82rem;
+    text-decoration: none;
+    transition: background .15s;
+  }
+  .tag:hover { background: #7A1B3A; color: #fff; }
+
+  .ficha-contacto {
+    display: flex;
+    flex-direction: column;
+    gap: .4rem;
+    margin-bottom: 1rem;
+  }
+  .contacto-item {
+    display: flex;
+    gap: .5rem;
+    align-items: flex-start;
+    font-size: .92rem;
+    color: #444;
+  }
+  .contacto-item .icono { flex-shrink: 0; }
+  .contacto-item a { color: #7A1B3A; text-decoration: none; }
+  .contacto-item a:hover { text-decoration: underline; }
+
+  .ficha-acciones { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .btn-wa, .btn-maps {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .6rem 1.2rem;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: .9rem;
+    transition: transform .1s, box-shadow .1s;
+    border: 0;
+    cursor: pointer;
+  }
+  .btn-wa { background: #25D366; color: #fff; }
+  .btn-wa:hover { background: #1eab52; color: #fff; }
+  .btn-maps { background: #4285F4; color: #fff; }
+  .btn-maps:hover { background: #2b6fd6; color: #fff; }
+
+  /* ===== SECCIONES ===== */
+  .seccion {
+    background: #fff;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    margin-bottom: 1.5rem;
+  }
+  .seccion h2 {
+    color: #7A1B3A;
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+    padding-bottom: .5rem;
+    border-bottom: 2px solid #f4b400;
+    display: inline-block;
+  }
+
+  /* ===== REDES ===== */
+  .redes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: .6rem;
+  }
+  .red-card {
+    display: flex;
+    flex-direction: column;
+    padding: .7rem .9rem;
+    border-radius: 6px;
+    text-decoration: none;
+    background: #f4f6f9;
+    border-left: 4px solid #7A1B3A;
+    transition: transform .1s, box-shadow .1s;
+  }
+  .red-card:hover { transform: translateX(4px); box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+  .red-tipo {
+    font-size: .72rem;
+    font-weight: 700;
+    color: #888;
+    text-transform: uppercase;
+  }
+  .red-usuario {
+    font-size: .88rem;
+    color: #7A1B3A;
+    font-weight: 600;
+    word-break: break-all;
+  }
+  .red-facebook   { border-left-color: #1877F2; }
+  .red-instagram  { border-left-color: #E1306C; }
+  .red-tiktok     { border-left-color: #000; }
+  .red-whatsapp   { border-left-color: #25D366; }
+  .red-youtube    { border-left-color: #FF0000; }
+  .red-twitter    { border-left-color: #1DA1F2; }
+  .red-pagina     { border-left-color: #4285F4; }
+
+  /* ===== DESCRIPCIÓN ===== */
+  .descripcion {
+    line-height: 1.7;
+    color: #333;
+    font-size: .95rem;
+  }
+
+  /* ===== GALERÍA ===== */
+  .galeria-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: .6rem;
+  }
+  .galeria-item {
+    aspect-ratio: 1;
+    background: #eee center/cover no-repeat;
+    border-radius: 8px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .galeria-item .overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.5);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity .2s;
+    font-weight: 600;
+    font-size: .9rem;
+  }
+  .galeria-item:hover .overlay { opacity: 1; }
+
+  /* ===== EXPERIENCIAS ===== */
+  .experiencias-lista { display: flex; flex-direction: column; gap: .8rem; }
+  .experiencia-card {
+    background: #f9fafb;
+    border-radius: 6px;
+    padding: 1rem;
+    border-left: 3px solid #f4b400;
+  }
+  .experiencia-card h3 {
+    color: #7A1B3A;
+    font-size: 1rem;
+    margin-bottom: .4rem;
+  }
+  .experiencia-card p { font-size: .9rem; color: #555; margin-bottom: .5rem; }
+  .experiencia-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: .82rem;
+    color: #777;
+  }
+
+  /* ===== MAPA ===== */
+  .mapa-wrap { border-radius: 8px; overflow: hidden; }
+  .direccion-wrap {
+    padding: 1rem;
+    background: #f9fafb;
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .direccion-wrap p { margin: 0; font-size: .95rem; }
+
+  /* ===== VOLVER ===== */
+  .volver-wrap { text-align: center; margin: 2rem 0; }
+  .btn-volver {
+    display: inline-block;
+    padding: .6rem 1.5rem;
+    background: #fff;
+    color: #7A1B3A;
+    border: 2px solid #7A1B3A;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: background .15s, color .15s;
+  }
+  .btn-volver:hover { background: #7A1B3A; color: #fff; }
+
+  /* ===== MODAL FOTO ===== */
+  .modal-foto {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.9);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .modal-foto.activo { display: flex; }
+  .modal-foto-inner { position: relative; max-width: 90%; max-height: 90vh; }
+  .modal-foto-inner img {
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: 8px;
+  }
+  .modal-close {
+    position: absolute;
+    top: -1rem;
+    right: -1rem;
+    background: #fff;
+    border: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    font-size: 1.2rem;
+    cursor: pointer;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(0,0,0,.3);
+  }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 700px) {
+    .ficha-header { padding: 1rem; }
+    .ficha-logo { width: 120px; height: 120px; }
+    .ficha-info h1 { font-size: 1.3rem; }
+    .ficha-header { flex-direction: column; align-items: center; text-align: center; }
+    .ficha-tags, .ficha-contacto, .ficha-acciones { justify-content: center; }
+    .contacto-item { justify-content: center; }
+  }
+</style>
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+function abrirFoto(url) {
+  document.getElementById('modal-foto-img').src = url;
+  document.getElementById('modal-foto').classList.add('activo');
+  document.body.style.overflow = 'hidden';
+}
+function cerrarFoto() {
+  document.getElementById('modal-foto').classList.remove('activo');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') cerrarFoto();
+});
+</script>
+{% endblock %}

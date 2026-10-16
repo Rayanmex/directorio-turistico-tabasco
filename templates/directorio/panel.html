@@ -1,0 +1,448 @@
+{% extends "directorio/base.html" %}
+{% load static %}
+
+{% block title %}Panel — Directorio Turístico{% endblock %}
+
+{% block contenido %}
+
+{# ============ ESTADÍSTICAS ============ #}
+<div class="stats">
+  <div class="stat">
+    <div class="stat-valor">{{ total_negocios }}</div>
+    <div class="stat-label">Negocios</div>
+    <div class="stat-icono">🏢</div>
+  </div>
+  <div class="stat">
+    <div class="stat-valor">{{ total_activos }}</div>
+    <div class="stat-label">Activos</div>
+    <div class="stat-icono">✅</div>
+  </div>
+  <div class="stat">
+    <div class="stat-valor">{{ total_con_foto }}</div>
+    <div class="stat-label">Con foto</div>
+    <div class="stat-icono">📷</div>
+  </div>
+  <div class="stat">
+    <div class="stat-valor">{{ total_sin_foto }}</div>
+    <div class="stat-label">Sin foto</div>
+    <div class="stat-icono">⏳</div>
+  </div>
+</div>
+
+{# ============ SCRAPING ============ #}
+<div class="card-scraping">
+  <div class="card-scraping-info">
+    <h3>Descargar imágenes de redes sociales</h3>
+    <p>
+      Ejecuta los scrapers para bajar fotos de los negocios que aún no tienen.
+      Se abrirá una ventana con el progreso. <strong>Chrome debe estar cerrado</strong>.
+    </p>
+  </div>
+  <div class="card-scraping-acciones">
+    <form method="post" action="{% url 'directorio:ejecutar_scraper' 'facebook' %}" style="margin:0;"
+          onsubmit="return confirm('¿Ejecutar scraper de Facebook?\n\nSe abrirá una ventana nueva.\nAsegúrate de que Chrome esté cerrado.');">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primario">Descargar de Facebook</button>
+    </form>
+    <form method="post" action="{% url 'directorio:ejecutar_scraper' 'instagram' %}" style="margin:0;"
+          onsubmit="return confirm('¿Ejecutar scraper de Instagram?\n\nSe abrirá una ventana nueva.\nAsegúrate de que Chrome esté cerrado.');">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primario">Descargar de Instagram</button>
+    </form>
+  </div>
+</div>
+
+{# ============ BÚSQUEDA ============ #}
+<form method="get" class="busqueda-wrap">
+  <div class="busqueda">
+    <input type="text" name="q" value="{{ q }}"
+           placeholder="Buscar negocio, giro o municipio..." autocomplete="off">
+  </div>
+  <button type="submit" class="btn btn-primario">Buscar</button>
+  {% if q %}
+    <a href="{% url 'directorio:panel' %}" class="btn btn-blanco">Limpiar</a>
+  {% endif %}
+</form>
+
+{# ============ RESULTADOS DE BÚSQUEDA ============ #}
+{% if q %}
+  <div class="tabla-wrap" style="margin-bottom:1.5rem;">
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th>Negocio</th>
+          <th>Giro</th>
+          <th>Municipio</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for n in resultados %}
+          <tr>
+            <td><strong>{{ n.nombre }}</strong></td>
+            <td>{{ n.giro.nombre|default:"—" }}</td>
+            <td>{{ n.municipio.nombre|default:n.municipio_original }}</td>
+            <td>
+              {% if n.municipio %}
+                <a href="{% url 'directorio:panel_municipio' n.municipio.pk %}"
+                   class="btn btn-outline btn-chico">Ver municipio</a>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="4" class="vacio">No se encontraron negocios con "{{ q }}".</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}
+
+{# ============ BOTÓN NUEVO NEGOCIO ============ #}
+<div class="page-header">
+  <h1>📍 Municipios</h1>
+  <div class="acciones">
+    <button type="button" onclick="abrirModalNuevo()" class="btn btn-primario">
+      + Nuevo negocio
+    </button>
+  </div>
+</div>
+
+{# ============ TABLA DE MUNICIPIOS ============ #}
+<div class="tabla-wrap">
+  <table class="tabla">
+    <thead>
+      <tr>
+        <th style="width:80px; text-align:center;">Orden</th>
+        <th>Municipio</th>
+        <th style="text-align:center;">Negocios</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in municipios %}
+        <tr>
+          <td style="text-align:center;">
+            <div style="display:inline-flex; gap:.2rem;">
+              <form method="post" action="{% url 'directorio:mover_municipio' m.pk %}" style="margin:0;">
+                {% csrf_token %}
+                <input type="hidden" name="direccion" value="arriba">
+                <button type="submit" class="btn-flecha" title="Mover arriba"
+                        {% if forloop.first %}disabled{% endif %}>▲</button>
+              </form>
+              <form method="post" action="{% url 'directorio:mover_municipio' m.pk %}" style="margin:0;">
+                {% csrf_token %}
+                <input type="hidden" name="direccion" value="abajo">
+                <button type="submit" class="btn-flecha" title="Mover abajo"
+                        {% if forloop.last %}disabled{% endif %}>▼</button>
+              </form>
+            </div>
+          </td>
+          <td class="mando-nombre">{{ m.nombre }}</td>
+          <td style="text-align:center;">{{ m.total }}</td>
+          <td style="white-space:nowrap;">
+            <a href="{% url 'directorio:panel_municipio' m.pk %}"
+               class="btn btn-primario btn-chico">Administrar</a>
+          </td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="4" class="vacio">
+            No hay municipios. Corre: <code>python manage.py cargar_municipios</code>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{# ============ TABLA DE GIROS ============ #}
+<div class="page-header" style="margin-top:1.8rem;">
+  <h1>🏷️ Giros</h1>
+  <div class="acciones">
+    <a href="{% url 'directorio:panel_giro_lista' %}" class="btn btn-outline btn-chico">
+      Ver todos
+    </a>
+  </div>
+</div>
+<div class="tabla-wrap">
+  <table class="tabla">
+    <thead>
+      <tr>
+        <th style="width:80px; text-align:center;">Orden</th>
+        <th>Giro</th>
+        <th style="text-align:center;">Negocios</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for g in giros %}
+        <tr>
+          <td style="text-align:center;">
+            <div style="display:inline-flex; gap:.2rem;">
+              <form method="post" action="{% url 'directorio:mover_giro' g.pk %}" style="margin:0;">
+                {% csrf_token %}
+                <input type="hidden" name="direccion" value="arriba">
+                <button type="submit" class="btn-flecha" title="Mover arriba"
+                        {% if forloop.first %}disabled{% endif %}>▲</button>
+              </form>
+              <form method="post" action="{% url 'directorio:mover_giro' g.pk %}" style="margin:0;">
+                {% csrf_token %}
+                <input type="hidden" name="direccion" value="abajo">
+                <button type="submit" class="btn-flecha" title="Mover abajo"
+                        {% if forloop.last %}disabled{% endif %}>▼</button>
+              </form>
+            </div>
+          </td>
+          <td class="mando-nombre">
+            {% if g.icono %}{{ g.icono }} {% endif %}{{ g.nombre }}
+          </td>
+          <td style="text-align:center;">{{ g.total }}</td>
+          <td style="white-space:nowrap;">
+            <a href="{% url 'directorio:panel_giro' g.pk %}"
+               class="btn btn-primario btn-chico">Administrar</a>
+          </td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="4" class="vacio">No hay giros capturados.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}
+
+
+{% block extra_css %}
+<style>
+  .card-scraping {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    background: #fff;
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    border-left: 4px solid #f4b400;
+    flex-wrap: wrap;
+  }
+  .card-scraping-info h3 {
+    color: #7A1B3A;
+    font-size: 1rem;
+    margin: 0 0 .3rem;
+  }
+  .card-scraping-info p {
+    font-size: .82rem;
+    color: #666;
+    margin: 0;
+    max-width: 500px;
+  }
+  .card-scraping-acciones {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+  }
+</style>
+{% endblock %}
+
+
+{% block extra_js %}
+{# ============ MODAL NUEVO NEGOCIO ============ #}
+<div id="modal-nuevo" style="
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,.5);
+  z-index:1000; align-items:center; justify-content:center; padding:1rem;
+">
+  <div style="background:#fff; border-radius:8px; padding:1.5rem; max-width:600px; width:100%; max-height:90vh; overflow-y:auto;">
+    <h3 style="color:#7A1B3A; margin-bottom:1rem;">+ Nuevo negocio</h3>
+    <form method="post" action="{% url 'directorio:crear_negocio' %}" enctype="multipart/form-data">
+      {% csrf_token %}
+
+      <label style="display:block; margin-bottom:.8rem;">
+        <span style="font-size:.85rem; font-weight:600;">Nombre *</span>
+        <input type="text" name="nombre" required maxlength="200"
+               style="width:100%; padding:.5rem; border:1px solid #ccc; border-radius:4px;">
+      </label>
+
+      <label style="display:block; margin-bottom:.8rem;">
+        <span style="font-size:.85rem; font-weight:600;">Municipio *</span>
+        <select name="municipio_id" required
+                style="width:100%; padding:.5rem; border:1px solid #ccc; border-radius:4px;">
+          <option value="">— Selecciona —</option>
+          {% for m in municipios %}
+            <option value="{{ m.pk }}">{{ m.nombre }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <label style="display:block; margin-bottom:.8rem;">
+        <span style="font-size:.85rem; font-weight:600;">Giro *</span>
+        <select name="giro_id" required
+                style="width:100%; padding:.5rem; border:1px solid #ccc; border-radius:4px;">
+          <option value="">— Selecciona —</option>
+          {% for g in giros %}
+            <option value="{{ g.pk }}">{{ g.icono }} {{ g.nombre }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <label style="display:block; margin-bottom:.8rem;">
+        <span style="font-size:.85rem; font-weight:600;">Dirección</span>
+        <input type="text" name="direccion" maxlength="400"
+               style="width:100%; padding:.5rem; border:1px solid #ccc; border-radius:4px;">
+      </label>
+
+      <label style="display:block; margin-bottom:.8rem;">
+        <span style="font-size:.85rem; font-weight:600;">Teléfono</span>
+        <input type="tel" name="telefono"
+               pattern="[0-9+\s\-\(\)/]{7,30}"
+               inputmode="tel"
+               style="width:100%; padding:.5rem; border:1px solid #ccc; border-radius:4px;">
+      </label>
+
+      <label style="display:block; margin-bottom:.8rem;">
+        <span style="font-size:.85rem; font-weight:600;">Descripción</span>
+        <textarea name="descripcion" rows="3" maxlength="2000"
+                  style="width:100%; padding:.5rem; border:1px solid #ccc; border-radius:4px;"></textarea>
+      </label>
+
+      {# Redes sociales #}
+      <div style="margin-bottom:1rem; padding-top:.8rem; border-top:1px solid #eee;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.5rem;">
+          <span style="font-size:.85rem; font-weight:600;">Redes sociales</span>
+          <button type="button" onclick="agregarRed()"
+                  style="background:#fff; color:#7A1B3A; border:1px solid #7A1B3A;
+                         padding:.25rem .6rem; border-radius:4px; font-size:.8rem; cursor:pointer;">
+            + Agregar red
+          </button>
+        </div>
+        <div id="redes-lista"></div>
+      </div>
+
+      {# Logo #}
+      <div style="margin-bottom:1rem; padding-top:.8rem; border-top:1px solid #eee;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.5rem;">
+          <span style="font-size:.85rem; font-weight:600;">Logo / Perfil</span>
+          <span style="font-size:.75rem; color:#888;">Imagen cuadrada (opcional)</span>
+        </div>
+        <input type="file" name="logo" id="logo-input" accept="image/*"
+               style="width:100%; padding:.4rem; border:1px dashed #ccc; border-radius:4px; font-size:.85rem;">
+        <div id="logo-preview" style="display:flex; gap:.4rem; flex-wrap:wrap; margin-top:.5rem;"></div>
+      </div>
+
+      {# Fotos #}
+      <div style="margin-bottom:1rem; padding-top:.8rem; border-top:1px solid #eee;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.5rem;">
+          <span style="font-size:.85rem; font-weight:600;">Fotos del negocio</span>
+          <span style="font-size:.75rem; color:#888;">Puedes subir varias (galería)</span>
+        </div>
+        <input type="file" name="fotos" id="fotos-input" accept="image/*" multiple
+               style="width:100%; padding:.4rem; border:1px dashed #ccc; border-radius:4px; font-size:.85rem;">
+        <div id="fotos-preview" style="display:flex; gap:.4rem; flex-wrap:wrap; margin-top:.5rem;"></div>
+      </div>
+
+      <div style="display:flex; gap:.5rem; justify-content:flex-end;">
+        <button type="button" onclick="cerrarModalNuevo()" class="btn btn-blanco">Cancelar</button>
+        <button type="submit" class="btn btn-primario">Crear negocio</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+// ===== Redes sociales dinámicas =====
+const REDES_OPCIONES = [
+  ['facebook',  'Facebook'], ['instagram', 'Instagram'],
+  ['tiktok',    'TikTok'],   ['whatsapp',  'WhatsApp'],
+  ['youtube',   'YouTube'],  ['twitter',   'Twitter / X'],
+  ['pagina',    'Página web'], ['otra',    'Otra'],
+];
+
+function agregarRed() {
+  const cont = document.getElementById('redes-lista');
+  const fila = document.createElement('div');
+  fila.style.cssText = 'display:flex; gap:.4rem; margin-bottom:.4rem; align-items:center;';
+
+  const select = document.createElement('select');
+  select.name = 'red_tipo';
+  select.style.cssText = 'flex:0 0 130px; padding:.4rem; border:1px solid #ccc; border-radius:4px; font-size:.85rem;';
+  REDES_OPCIONES.forEach(([val, txt]) => {
+    const opt = document.createElement('option');
+    opt.value = val;
+    opt.textContent = txt;
+    select.appendChild(opt);
+  });
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.name = 'red_usuario';
+  input.placeholder = '@usuario o URL';
+  input.style.cssText = 'flex:1; padding:.4rem; border:1px solid #ccc; border-radius:4px; font-size:.85rem;';
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = '✕';
+  btn.style.cssText = 'background:#fff; color:#c62828; border:1px solid #c62828; width:30px; height:30px; border-radius:4px; cursor:pointer; font-weight:700;';
+  btn.onclick = () => fila.remove();
+
+  fila.appendChild(select);
+  fila.appendChild(input);
+  fila.appendChild(btn);
+  cont.appendChild(fila);
+}
+
+// ===== Preview logo =====
+function renderPreviewLogo(input) {
+  const cont = document.getElementById('logo-preview');
+  cont.innerHTML = '';
+  const file = input.files && input.files[0];
+  if (!file) return;
+
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'width:80px; height:80px; border-radius:50%; background:#eee center/cover no-repeat; border:2px solid #f4b400;';
+  const reader = new FileReader();
+  reader.onload = (e) => { wrapper.style.backgroundImage = `url('${e.target.result}')`; };
+  reader.readAsDataURL(file);
+  cont.appendChild(wrapper);
+}
+
+// ===== Preview fotos =====
+function renderPreviewFotos(input) {
+  const cont = document.getElementById('fotos-preview');
+  cont.innerHTML = '';
+  Array.from(input.files || []).forEach((file) => {
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'width:70px; height:70px; border-radius:4px; background:#eee center/cover no-repeat; border:1px solid #ddd;';
+    const reader = new FileReader();
+    reader.onload = (e) => { wrapper.style.backgroundImage = `url('${e.target.result}')`; };
+    reader.readAsDataURL(file);
+    cont.appendChild(wrapper);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const li = document.getElementById('logo-input');
+  const fi = document.getElementById('fotos-input');
+  if (li) li.addEventListener('change', () => renderPreviewLogo(li));
+  if (fi) fi.addEventListener('change', () => renderPreviewFotos(fi));
+});
+
+function abrirModalNuevo() {
+  document.getElementById('modal-nuevo').style.display = 'flex';
+}
+
+function cerrarModalNuevo() {
+  document.getElementById('modal-nuevo').style.display = 'none';
+  document.getElementById('redes-lista').innerHTML = '';
+  document.getElementById('logo-preview').innerHTML = '';
+  document.getElementById('fotos-preview').innerHTML = '';
+  document.getElementById('logo-input').value = '';
+  document.getElementById('fotos-input').value = '';
+  document.querySelector('#modal-nuevo form').reset();
+}
+</script>
+{% endblock %}

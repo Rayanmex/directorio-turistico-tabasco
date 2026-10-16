@@ -1,0 +1,538 @@
+{% extends "directorio/base.html" %}
+{% load static %}
+
+{% block title %}{{ municipio.nombre }} — Panel{% endblock %}
+
+{% block contenido %}
+
+{# ============ HEADER ============ #}
+<div class="page-header">
+  <h1>📍 {{ municipio.nombre }} — {{ por_giro|length }} giro{{ por_giro|length|pluralize }}</h1>
+  <div class="acciones">
+    <a href="{% url 'directorio:panel' %}" class="btn btn-blanco">← Panel</a>
+    <a href="{% url 'directorio:documento_municipio' municipio.pk %}" target="_blank" class="btn btn-primario">
+      👁 Ver HTML
+    </a>
+  </div>
+</div>
+
+{# ============ LISTADO POR GIRO ============ #}
+{% for giro, negocios in por_giro.items %}
+  <h3 class="giro-titulo">
+    {% if giro.icono %}{{ giro.icono }} {% endif %}{{ giro.nombre }}
+    <small>({{ negocios|length }})</small>
+  </h3>
+
+  {% for n in negocios %}
+    <div class="negocio-card {% if not n.activo %}inactivo{% endif %}">
+
+      {# ============ HEAD ============ #}
+      <div class="negocio-head">
+        <div class="negocio-titulo">
+          {% if n.logo_url %}
+            <div class="logo-mini" style="background-image:url('{{ n.logo_url }}');"></div>
+          {% else %}
+            <div class="logo-mini vacio">Sin foto</div>
+          {% endif %}
+          <div class="info">
+            <h3>
+              {{ n.nombre }}
+              {% if not n.activo %}<span class="badge-oculto">(oculto)</span>{% endif %}
+              {% if n.destacado %}<span class="estrella">★</span>{% endif %}
+            </h3>
+            <small>ID #{{ n.pk }} · slug: {{ n.slug }}</small>
+          </div>
+        </div>
+        <div class="negocio-acciones">
+          <form method="post" action="{% url 'directorio:toggle_destacado' n.pk %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn-mini primario" title="Destacar">
+              {% if n.destacado %}★ Quitar destacado{% else %}☆ Destacar{% endif %}
+            </button>
+          </form>
+          <form method="post" action="{% url 'directorio:toggle_activo' n.pk %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn-mini gris">
+              {% if n.activo %}Ocultar{% else %}Mostrar{% endif %}
+            </button>
+          </form>
+          <form method="post" action="{% url 'directorio:eliminar_negocio' n.pk %}" style="display:inline;"
+                onsubmit="return confirm('¿Eliminar {{ n.nombre|escapejs }}? Esta acción no se puede deshacer.');">
+            {% csrf_token %}
+            <button type="submit" class="btn-mini rojo">Eliminar</button>
+          </form>
+        </div>
+      </div>
+
+      {# ============ CAMPOS EDITABLES ============ #}
+      {% include 'directorio/_campo_editable.html' with campo='nombre' valor=n.nombre tipo='text' url='directorio:actualizar_nombre' pk=n.pk %}
+      {% include 'directorio/_campo_editable.html' with campo='direccion' valor=n.direccion tipo='text' url='directorio:actualizar_direccion' pk=n.pk %}
+      {% include 'directorio/_campo_editable.html' with campo='telefono' valor=n.telefono tipo='tel' url='directorio:actualizar_telefono' pk=n.pk %}
+      {% include 'directorio/_campo_editable.html' with campo='descripcion' valor=n.descripcion tipo='textarea' url='directorio:actualizar_descripcion' pk=n.pk %}
+
+      {# ============ REDES SOCIALES ============ #}
+      <div class="seccion-interna">
+        <div class="seccion-header">
+          <span class="seccion-label">Redes sociales</span>
+          <button type="button" class="btn-mini primario" onclick="toggleRed({{ n.pk }})">+ Agregar</button>
+        </div>
+
+        <div class="redes-lista" id="redes-{{ n.pk }}">
+          {% for r in n.redes.all %}
+            <span class="red-chip">
+              {{ r.get_tipo_display }}: {{ r.usuario }}
+              <form method="post" action="{% url 'directorio:eliminar_red' r.pk %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" title="Quitar" onclick="return confirm('¿Quitar esta red?');">✕</button>
+              </form>
+            </span>
+          {% empty %}
+            <span class="texto-vacio">Sin redes</span>
+          {% endfor %}
+        </div>
+
+        <form method="post" action="{% url 'directorio:agregar_red' n.pk %}"
+              id="form-red-{{ n.pk }}" class="inline-form">
+          {% csrf_token %}
+          <select name="tipo">
+            <option value="facebook">Facebook</option>
+            <option value="instagram">Instagram</option>
+            <option value="tiktok">TikTok</option>
+            <option value="whatsapp">WhatsApp</option>
+            <option value="youtube">YouTube</option>
+            <option value="twitter">Twitter / X</option>
+            <option value="pagina">Página web</option>
+            <option value="otra">Otra</option>
+          </select>
+          <input type="text" name="usuario" placeholder="@usuario o URL" required>
+          <button type="submit" class="btn-mini primario">Guardar</button>
+          <button type="button" class="btn-mini gris" onclick="toggleRed({{ n.pk }})">Cancelar</button>
+        </form>
+      </div>
+
+      {# ============ FOTOS ============ #}
+      <div class="seccion-interna">
+        <div class="seccion-header">
+          <span class="seccion-label">Fotos</span>
+          <button type="button" class="btn-mini primario" onclick="toggleFoto({{ n.pk }})">+ Subir</button>
+        </div>
+
+        <div class="fotos-wrap">
+
+          {# --- LOGO --- #}
+          <div class="fotos-bloque">
+            <h5>Logo / Perfil</h5>
+            <div class="fotos-lista">
+              {% for f in n.fotos.all %}
+                {% if f.tipo == 'logo' %}
+                  <div class="foto-thumb logo" style="background-image:url('{{ f.url }}');">
+                    <div class="acciones">
+                      <form method="post" action="{% url 'directorio:eliminar_foto' f.pk %}" style="display:inline;"
+                            onsubmit="return confirm('¿Eliminar el logo?');">
+                        {% csrf_token %}
+                        <button type="submit" title="Eliminar">✕</button>
+                      </form>
+                    </div>
+                  </div>
+                {% endif %}
+              {% endfor %}
+              {% if not n.logo_url %}
+                <div class="foto-vacia">Sin logo</div>
+              {% endif %}
+            </div>
+          </div>
+
+          {# --- GALERÍA --- #}
+          <div class="fotos-bloque" style="flex:2;">
+            <h5>Galería ({{ n.galeria.count }})</h5>
+            <div class="fotos-lista">
+              {% for f in n.galeria %}
+                <div class="foto-thumb" style="background-image:url('{{ f.url }}');">
+                  <div class="acciones">
+                    <form method="post" action="{% url 'directorio:marcar_principal' f.pk %}" style="display:inline;">
+                      {% csrf_token %}
+                      <button type="submit" title="Usar como logo">★</button>
+                    </form>
+                    <form method="post" action="{% url 'directorio:eliminar_foto' f.pk %}" style="display:inline;"
+                          onsubmit="return confirm('¿Eliminar esta foto?');">
+                      {% csrf_token %}
+                      <button type="submit" title="Eliminar">✕</button>
+                    </form>
+                  </div>
+                </div>
+              {% empty %}
+                <div class="foto-vacia">Sin fotos en galería</div>
+              {% endfor %}
+            </div>
+          </div>
+
+        </div>
+
+        {# Form subir foto #}
+        <form method="post" action="{% url 'directorio:subir_foto' n.pk %}"
+              id="form-foto-{{ n.pk }}" class="inline-form" enctype="multipart/form-data"
+              style="margin-top:.6rem;">
+          {% csrf_token %}
+          <select name="tipo" style="flex: 0 0 140px;">
+            <option value="galeria">Galería</option>
+            <option value="logo">Logo / Perfil</option>
+          </select>
+          <input type="file" name="foto" accept="image/*" required>
+          <button type="submit" class="btn-mini primario">Subir</button>
+          <button type="button" class="btn-mini gris" onclick="toggleFoto({{ n.pk }})">Cancelar</button>
+        </form>
+      </div>
+
+    </div>
+  {% endfor %}
+{% empty %}
+  <div class="aviso aviso-warning">
+    Este municipio no tiene negocios aún.
+    <a href="{% url 'directorio:panel' %}">Agrega uno desde el panel →</a>
+  </div>
+{% endfor %}
+
+{% endblock %}
+
+
+{% block extra_css %}
+<style>
+  /* ===== TÍTULO DE GIRO ===== */
+  .giro-titulo {
+    color: #7A1B3A;
+    margin: 1.5rem 0 .6rem;
+    font-size: 1rem;
+    font-weight: 700;
+  }
+  .giro-titulo small {
+    color: #888;
+    font-weight: 400;
+  }
+
+  /* ===== TARJETA DE NEGOCIO ===== */
+  .negocio-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    border-left: 4px solid #7A1B3A;
+  }
+  .negocio-card.inactivo {
+    opacity: .55;
+    border-left-color: #999;
+  }
+
+  .negocio-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: .8rem;
+  }
+  .negocio-titulo {
+    flex: 1;
+    min-width: 200px;
+    display: flex;
+    gap: .8rem;
+    align-items: center;
+  }
+  .negocio-titulo .logo-mini {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    background: #eee center/cover no-repeat;
+    flex-shrink: 0;
+    border: 2px solid #f4b400;
+  }
+  .negocio-titulo .logo-mini.vacio {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #bbb;
+    font-size: .7rem;
+    border-color: #ddd;
+  }
+  .negocio-titulo .info h3 {
+    color: #7A1B3A;
+    font-size: 1.05rem;
+    margin-bottom: .2rem;
+  }
+  .negocio-titulo .info small {
+    color: #666;
+    font-size: .8rem;
+  }
+  .badge-oculto {
+    color: #999;
+    font-size: .8rem;
+    font-weight: 400;
+  }
+  .estrella {
+    color: #f4b400;
+  }
+
+  .negocio-acciones {
+    display: flex;
+    gap: .3rem;
+    flex-wrap: wrap;
+  }
+
+  /* ===== CAMPOS EDITABLES (usados por _campo_editable.html) ===== */
+  .campo-editable {
+    display: flex;
+    gap: .4rem;
+    align-items: flex-start;
+    margin-bottom: .4rem;
+  }
+  .campo-editable label {
+    flex: 0 0 110px;
+    font-size: .8rem;
+    font-weight: 600;
+    color: #555;
+    padding-top: .45rem;
+  }
+  .campo-editable .valor {
+    flex: 1;
+    padding: .4rem .5rem;
+    background: #fafafa;
+    border-radius: 4px;
+    font-size: .88rem;
+    min-height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+  }
+  .campo-editable .valor.vacio {
+    color: #aaa;
+    font-style: italic;
+  }
+  .campo-editable .valor button {
+    background: transparent;
+    border: 0;
+    color: #7A1B3A;
+    cursor: pointer;
+    font-size: .75rem;
+    padding: .1rem .3rem;
+  }
+  .campo-editable .valor button:hover {
+    text-decoration: underline;
+  }
+
+  .inline-form {
+    display: none;
+    flex: 1;
+    gap: .3rem;
+    align-items: center;
+    margin-top: .4rem;
+  }
+  .inline-form.activo {
+    display: flex;
+  }
+  .inline-form input,
+  .inline-form textarea,
+  .inline-form select {
+    flex: 1;
+    padding: .35rem .5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: .85rem;
+    font-family: inherit;
+  }
+
+  /* ===== SECCIONES INTERNAS (redes y fotos) ===== */
+  .seccion-interna {
+    margin-top: .6rem;
+    padding-top: .6rem;
+    border-top: 1px dashed #eee;
+  }
+  .seccion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: .4rem;
+  }
+  .seccion-label {
+    font-size: .8rem;
+    font-weight: 600;
+    color: #555;
+  }
+  .texto-vacio {
+    color: #aaa;
+    font-style: italic;
+    font-size: .8rem;
+  }
+
+  /* ===== REDES ===== */
+  .redes-lista {
+    display: flex;
+    gap: .4rem;
+    flex-wrap: wrap;
+    margin-top: .3rem;
+  }
+  .red-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    background: #7A1B3A;
+    color: #fff;
+    padding: .2rem .5rem;
+    border-radius: 12px;
+    font-size: .75rem;
+    text-decoration: none;
+  }
+  .red-chip button {
+    background: transparent;
+    border: 0;
+    color: #fff;
+    cursor: pointer;
+    font-weight: 700;
+    padding: 0 .1rem;
+  }
+
+  /* ===== FOTOS ===== */
+  .fotos-wrap {
+    display: flex;
+    gap: 1.2rem;
+    flex-wrap: wrap;
+  }
+  .fotos-bloque {
+    flex: 1;
+    min-width: 200px;
+  }
+  .fotos-bloque h5 {
+    font-size: .72rem;
+    font-weight: 700;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-bottom: .4rem;
+  }
+  .fotos-lista {
+    display: flex;
+    gap: .4rem;
+    flex-wrap: wrap;
+  }
+
+  .foto-thumb {
+    width: 70px;
+    height: 70px;
+    border-radius: 4px;
+    background: #eee center/cover no-repeat;
+    position: relative;
+    border: 2px solid transparent;
+  }
+  .foto-thumb.logo {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 2px solid #f4b400;
+  }
+  .foto-thumb .acciones {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .2rem;
+    opacity: 0;
+    transition: opacity .15s;
+    border-radius: inherit;
+  }
+  .foto-thumb:hover .acciones {
+    opacity: 1;
+  }
+  .foto-thumb .acciones button {
+    background: transparent;
+    border: 0;
+    color: #fff;
+    cursor: pointer;
+    font-size: .9rem;
+    padding: .2rem;
+  }
+  .foto-vacia {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #aaa;
+    font-style: italic;
+    font-size: .75rem;
+    padding: 1rem;
+    border: 1px dashed #ddd;
+    border-radius: 4px;
+    width: 100%;
+  }
+
+  /* ===== BOTONES MINI ===== */
+  .btn-mini {
+    padding: .25rem .55rem;
+    font-size: .78rem;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid;
+    background: #fff;
+    font-weight: 600;
+  }
+  .btn-mini.rojo {
+    color: #c62828;
+    border-color: #c62828;
+  }
+  .btn-mini.rojo:hover {
+    background: #c62828;
+    color: #fff;
+  }
+  .btn-mini.gris {
+    color: #666;
+    border-color: #ccc;
+  }
+  .btn-mini.gris:hover {
+    background: #666;
+    color: #fff;
+  }
+  .btn-mini.primario {
+    color: #7A1B3A;
+    border-color: #7A1B3A;
+  }
+  .btn-mini.primario:hover {
+    background: #7A1B3A;
+    color: #fff;
+  }
+</style>
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+function toggleRed(pk) {
+  const f = document.getElementById('form-red-' + pk);
+  f.classList.toggle('activo');
+  if (f.classList.contains('activo')) {
+    f.querySelector('input[name="usuario"]').focus();
+  }
+}
+
+function toggleFoto(pk) {
+  const f = document.getElementById('form-foto-' + pk);
+  f.classList.toggle('activo');
+  if (f.classList.contains('activo')) {
+    f.querySelector('input[type="file"]').focus();
+  }
+}
+
+function editarCampo(campo, pk) {
+  document.getElementById('valor-' + campo + '-' + pk).style.display = 'none';
+  document.getElementById('form-' + campo + '-' + pk).classList.add('activo');
+  const input = document.querySelector(
+    '#form-' + campo + '-' + pk + ' input, #form-' + campo + '-' + pk + ' textarea'
+  );
+  if (input) input.focus();
+}
+
+function cancelarCampo(campo, pk) {
+  document.getElementById('valor-' + campo + '-' + pk).style.display = 'flex';
+  document.getElementById('form-' + campo + '-' + pk).classList.remove('activo');
+}
+</script>
+{% endblock %}

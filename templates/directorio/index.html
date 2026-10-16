@@ -1,0 +1,479 @@
+{% extends "directorio/base.html" %}
+{% load static %}
+
+{% block title %}Directorio Turístico de Tabasco{% endblock %}
+
+{% block contenido %}
+
+{# ============ FILTROS ============ #}
+<form method="get" class="filtros-wrap">
+  <div class="filtros-grid">
+
+    <div class="filtro">
+      <label>Buscar</label>
+      <input type="text" name="q" value="{{ q }}"
+             placeholder="Nombre, giro, dirección..."
+             autocomplete="off">
+    </div>
+
+    <div class="filtro">
+      <label>Municipio</label>
+      <select name="municipio">
+        <option value="">Todos</option>
+        {% for m in municipios %}
+          <option value="{{ m.slug }}" {% if municipio_sel == m.slug %}selected{% endif %}>
+            {{ m.nombre }} ({{ m.total }})
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filtro">
+      <label>Giro</label>
+      <select name="giro">
+        <option value="">Todos</option>
+        {% for g in giros %}
+          <option value="{{ g.slug }}" {% if giro_sel == g.slug %}selected{% endif %}>
+            {{ g.nombre }} ({{ g.total }})
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filtro">
+      <label>Ordenar por</label>
+      <select name="orden">
+        <option value="relevancia" {% if orden == 'relevancia' %}selected{% endif %}>Relevancia</option>
+        <option value="nombre"     {% if orden == 'nombre' %}selected{% endif %}>Nombre (A-Z)</option>
+        <option value="municipio"  {% if orden == 'municipio' %}selected{% endif %}>Municipio</option>
+      </select>
+    </div>
+
+    <div class="filtro-check">
+      <label>
+        <input type="checkbox" name="con_foto" value="1" {% if solo_con_foto %}checked{% endif %}>
+        Solo con foto
+      </label>
+    </div>
+
+    <div class="filtro-acciones">
+      <button type="submit" class="btn btn-primario">Aplicar</button>
+      {% if q or municipio_sel or giro_sel or solo_con_foto %}
+        <a href="{% url 'directorio:index' %}" class="btn btn-blanco">Limpiar</a>
+      {% endif %}
+    </div>
+
+  </div>
+</form>
+
+{# ============ CONTADOR ============ #}
+<div class="resultado-info">
+  <span>
+    Mostrando <strong>{{ total_resultados }}</strong>
+    de {{ total_general }} prestadores
+  </span>
+</div>
+
+{# ============ GRID DE PRESTADORES ============ #}
+{% if negocios %}
+  <div class="prestadores-grid">
+    {% for n in negocios %}
+      <div class="prestador-card">
+        <div class="prestador-logo"
+             {% if n.logo_url %}style="background-image:url('{{ n.logo_url }}');"{% endif %}>
+          {% if not n.logo_url %}
+            <div class="logo-placeholder">{{ n.nombre|slice:":1"|upper }}</div>
+          {% endif %}
+          {% if n.destacado %}
+            <span class="badge-destacado" title="Destacado">★</span>
+          {% endif %}
+        </div>
+
+        <div class="prestador-info">
+          <h3>{{ n.nombre }}</h3>
+
+          <div class="prestador-meta">
+            {% if n.giro %}
+              <span class="meta-item">
+                {% if n.giro.icono %}{{ n.giro.icono }} {% endif %}{{ n.giro.nombre }}
+              </span>
+            {% endif %}
+            {% if n.municipio %}
+              <span class="meta-item">{{ n.municipio.nombre }}</span>
+            {% elif n.municipio_original %}
+              <span class="meta-item">{{ n.municipio_original }}</span>
+            {% endif %}
+          </div>
+
+          {% if n.descripcion %}
+            <p class="prestador-desc">{{ n.descripcion|truncatechars:120 }}</p>
+          {% endif %}
+
+          {% if n.telefono %}
+            <p class="prestador-tel">Tel: {{ n.telefono }}</p>
+          {% endif %}
+        </div>
+
+        <div class="prestador-acciones">
+          <button type="button"
+                  class="btn btn-outline btn-chico"
+                  onclick="abrirFotos({{ n.pk }})">
+            Ver fotos{% if n.fotos.count > 1 %} ({{ n.fotos.count }}){% endif %}
+          </button>
+          <a href="{% url 'directorio:negocio_detalle' n.slug %}"
+             class="btn btn-primario btn-chico">
+            Ver ficha
+          </a>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="sin-resultados">
+    <h3>No se encontraron prestadores</h3>
+    <p>Prueba con otros filtros o <a href="{% url 'directorio:index' %}">limpia la búsqueda</a>.</p>
+  </div>
+{% endif %}
+
+
+{# ============ MODALES DE GALERÍA ============ #}
+{% for n in negocios %}
+  {% if n.fotos.count > 1 %}
+    <div class="modal-fotos" id="modal-fotos-{{ n.pk }}" onclick="cerrarFotos(event, {{ n.pk }})">
+      <div class="modal-fotos-inner" onclick="event.stopPropagation()">
+        <div class="modal-fotos-head">
+          <h3>{{ n.nombre }}</h3>
+          <button type="button" class="modal-close" onclick="cerrarFotos(event, {{ n.pk }})">✕</button>
+        </div>
+        <div class="modal-fotos-grid">
+          {% for f in n.fotos.all %}
+            <div class="modal-foto-item"
+                 style="background-image:url('{{ f.url }}');"
+                 onclick="window.open('{{ f.url }}', '_blank');"></div>
+          {% endfor %}
+        </div>
+        <div class="modal-fotos-footer">
+          <a href="{% url 'directorio:negocio_detalle' n.slug %}"
+             class="btn btn-primario">Ver ficha completa</a>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+{% endfor %}
+
+{% endblock %}
+
+
+{% block extra_css %}
+<style>
+  /* ===== FILTROS ===== */
+  .filtros-wrap {
+    background: #fff;
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  .filtros-grid {
+    display: grid;
+    grid-template-columns: 2fr 1.2fr 1.2fr 1fr auto auto;
+    gap: .8rem;
+    align-items: end;
+  }
+  .filtro {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+  }
+  .filtro label {
+    font-size: .75rem;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: .3px;
+  }
+  .filtro input,
+  .filtro select {
+    padding: .5rem .6rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: .88rem;
+    font-family: inherit;
+    width: 100%;
+  }
+  .filtro input:focus,
+  .filtro select:focus {
+    outline: none;
+    border-color: #7A1B3A;
+  }
+  .filtro-check {
+    display: flex;
+    align-items: end;
+    padding-bottom: .5rem;
+  }
+  .filtro-check label {
+    display: flex;
+    align-items: center;
+    gap: .3rem;
+    font-size: .85rem;
+    color: #555;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .filtro-acciones {
+    display: flex;
+    gap: .4rem;
+    padding-bottom: .1rem;
+  }
+
+  /* ===== CONTADOR ===== */
+  .resultado-info {
+    font-size: .85rem;
+    color: #666;
+    margin-bottom: 1rem;
+    padding-left: .2rem;
+  }
+  .resultado-info strong {
+    color: #7A1B3A;
+  }
+
+  /* ===== GRID ===== */
+  .prestadores-grid {
+    display: grid;
+    gap: 1.2rem;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+
+  .prestador-card {
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    transition: box-shadow .15s, transform .15s;
+    display: flex;
+    flex-direction: column;
+  }
+  .prestador-card:hover {
+    box-shadow: 0 4px 14px rgba(0,0,0,.12);
+    transform: translateY(-2px);
+  }
+
+  .prestador-logo {
+    height: 180px;
+    background: #f4f6f9 center/cover no-repeat;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .logo-placeholder {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: #7A1B3A;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 700;
+  }
+  .badge-destacado {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: #f4b400;
+    color: #fff;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,.2);
+  }
+
+  .prestador-info {
+    padding: .9rem 1rem .5rem;
+    flex: 1;
+  }
+  .prestador-info h3 {
+    color: #7A1B3A;
+    font-size: 1rem;
+    margin: 0 0 .4rem;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .prestador-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .3rem .5rem;
+    margin-bottom: .5rem;
+  }
+  .meta-item {
+    font-size: .72rem;
+    background: #f4f6f9;
+    color: #555;
+    padding: .15rem .5rem;
+    border-radius: 10px;
+  }
+  .prestador-desc {
+    font-size: .82rem;
+    color: #666;
+    line-height: 1.4;
+    margin-bottom: .4rem;
+  }
+  .prestador-tel {
+    font-size: .8rem;
+    color: #7A1B3A;
+    font-weight: 600;
+  }
+
+  .prestador-acciones {
+    padding: .7rem 1rem 1rem;
+    display: flex;
+    gap: .4rem;
+  }
+  .prestador-acciones .btn {
+    flex: 1;
+    text-align: center;
+    padding: .45rem .6rem;
+    font-size: .8rem;
+  }
+
+  /* ===== SIN RESULTADOS ===== */
+  .sin-resultados {
+    background: #fff;
+    border-radius: 8px;
+    padding: 3rem 1rem;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  .sin-resultados h3 {
+    color: #7A1B3A;
+    margin-bottom: .5rem;
+  }
+  .sin-resultados a {
+    color: #7A1B3A;
+    font-weight: 600;
+  }
+
+  /* ===== MODAL FOTOS ===== */
+  .modal-fotos {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.75);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .modal-fotos.activo {
+    display: flex;
+  }
+  .modal-fotos-inner {
+    background: #fff;
+    border-radius: 10px;
+    max-width: 900px;
+    width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .modal-fotos-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.2rem;
+    border-bottom: 1px solid #eee;
+  }
+  .modal-fotos-head h3 {
+    color: #7A1B3A;
+    font-size: 1.1rem;
+    margin: 0;
+  }
+  .modal-close {
+    background: transparent;
+    border: 0;
+    font-size: 1.3rem;
+    color: #666;
+    cursor: pointer;
+    padding: .2rem .4rem;
+  }
+  .modal-close:hover {
+    color: #c62828;
+  }
+  .modal-fotos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: .5rem;
+    padding: 1rem;
+    overflow-y: auto;
+  }
+  .modal-foto-item {
+    aspect-ratio: 1;
+    background: #eee center/cover no-repeat;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+  }
+  .modal-foto-item:hover {
+    transform: scale(1.03);
+    box-shadow: 0 4px 12px rgba(0,0,0,.2);
+  }
+  .modal-fotos-footer {
+    padding: .8rem 1.2rem;
+    border-top: 1px solid #eee;
+    text-align: right;
+  }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 900px) {
+    .filtros-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+    .filtro-acciones {
+      grid-column: 1 / -1;
+    }
+  }
+  @media (max-width: 600px) {
+    .filtros-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+function abrirFotos(pk) {
+  const modal = document.getElementById('modal-fotos-' + pk);
+  if (modal) modal.classList.add('activo');
+  document.body.style.overflow = 'hidden';
+}
+
+function cerrarFotos(event, pk) {
+  const modal = document.getElementById('modal-fotos-' + pk);
+  if (modal) modal.classList.remove('activo');
+  document.body.style.overflow = '';
+}
+
+// Cerrar con ESC
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-fotos.activo').forEach(m => {
+      m.classList.remove('activo');
+    });
+    document.body.style.overflow = '';
+  }
+});
+</script>
+{% endblock %}

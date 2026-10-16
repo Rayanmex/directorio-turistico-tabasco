@@ -1,0 +1,186 @@
+{% extends "directorio/base.html" %}
+{% load static %}
+
+{% block title %}Imágenes del documento — Panel{% endblock %}
+
+{% block contenido %}
+
+{# ============ HEADER ============ #}
+<div class="page-header">
+  <h1>🖼 Imágenes del documento</h1>
+  <div class="acciones">
+    <a href="{% url 'directorio:panel' %}" class="btn btn-blanco">← Panel</a>
+  </div>
+</div>
+
+<p class="descripcion-pagina">
+  Cambia las imágenes que se usan para generar el PDF del directorio.
+  Al subir una nueva, la anterior se respalda automáticamente.
+</p>
+
+{# ============ GRID DE IMÁGENES ============ #}
+<div class="imagenes-grid">
+  {% for img in imagenes %}
+    <div class="imagen-card">
+
+      <div class="imagen-preview">
+        {% if img.existe %}
+          <img src="{{ img.url }}?v={% now 'U' %}" alt="{{ img.info.nombre }}">
+        {% else %}
+          <div class="placeholder">📄</div>
+        {% endif %}
+      </div>
+
+      <div class="imagen-info">
+        <div class="imagen-nombre">{{ img.info.nombre }}</div>
+        <div class="imagen-desc">{{ img.info.descripcion }}</div>
+
+        <div class="imagen-meta">
+          {% if img.existe %}
+            📁 {{ img.info.archivo }} · {{ img.peso_kb }} KB
+          {% else %}
+            ⚠️ No encontrada
+          {% endif %}
+        </div>
+
+        <div class="imagen-acciones">
+          <form method="post"
+                action="{% url 'directorio:subir_imagen_documento' img.clave %}"
+                enctype="multipart/form-data"
+                style="display:inline;">
+            {% csrf_token %}
+            <label class="file-label">
+              {% if img.existe %}🔄 Cambiar{% else %}📤 Subir{% endif %}
+              <input type="file" name="imagen"
+                     accept=".png,.jpg,.jpeg,.webp,.svg"
+                     onchange="this.form.submit()">
+            </label>
+          </form>
+
+          {% if img.existe %}
+            <form method="post"
+                  action="{% url 'directorio:restaurar_imagen_documento' img.clave %}"
+                  style="display:inline;"
+                  onsubmit="return confirm('¿Restaurar la versión anterior?');">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-blanco btn-chico">↶ Restaurar</button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+  {% empty %}
+    <div class="aviso aviso-warning">
+      No hay imágenes configuradas. Revisa la vista <code>panel_imagenes</code>.
+    </div>
+  {% endfor %}
+</div>
+
+{% endblock %}
+
+
+{% block extra_css %}
+<style>
+  .descripcion-pagina {
+    color: #666;
+    font-size: .9rem;
+    margin-bottom: 1.5rem;
+    max-width: 700px;
+  }
+
+  .imagenes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.2rem;
+  }
+
+  .imagen-card {
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow .15s;
+  }
+  .imagen-card:hover {
+    box-shadow: 0 4px 14px rgba(0,0,0,.12);
+  }
+
+  .imagen-preview {
+    width: 100%;
+    height: 220px;
+    background: #f5f5f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-bottom: 1px solid #eee;
+  }
+  .imagen-preview img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+  .imagen-preview .placeholder {
+    color: #bbb;
+    font-size: 3rem;
+  }
+
+  .imagen-info {
+    padding: 1rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .imagen-nombre {
+    font-weight: 700;
+    color: #7A1B3A;
+    font-size: 1rem;
+    margin-bottom: .2rem;
+  }
+  .imagen-desc {
+    font-size: .8rem;
+    color: #666;
+    margin-bottom: .6rem;
+  }
+  .imagen-meta {
+    font-size: .72rem;
+    color: #999;
+    margin-bottom: .8rem;
+  }
+
+  .imagen-acciones {
+    display: flex;
+    gap: .4rem;
+    margin-top: auto;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .file-label {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .5rem 1rem;
+    background: #7A1B3A;
+    color: #fff;
+    border-radius: 6px;
+    font-size: .8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s, box-shadow .15s;
+    border: 0;
+  }
+  .file-label:hover {
+    background: #5d142c;
+    box-shadow: 0 4px 12px rgba(122,27,58,.3);
+  }
+
+  /* Ocultar el input de archivo dentro del label */
+  .imagen-card input[type="file"] {
+    display: none;
+  }
+</style>
+{% endblock %}

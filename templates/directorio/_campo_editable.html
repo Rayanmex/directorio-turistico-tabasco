@@ -1,0 +1,37 @@
+{% comment %}
+Partial: campo editable inline.
+Uso: {% include 'directorio/_campo_editable.html' with campo='telefono' valor=n.telefono tipo='tel' url='directorio:actualizar_telefono' pk=n.pk %}
+{% endcomment %}
+
+<div class="campo-editable">
+  <label>{{ campo|capfirst }}:</label>
+
+  <div class="valor {% if not valor %}vacio{% endif %}" id="valor-{{ campo }}-{{ pk }}">
+    <span>{{ valor|default:"— sin definir —" }}</span>
+    <button type="button" onclick="editarCampo('{{ campo }}', {{ pk }})">✎ editar</button>
+  </div>
+
+  <form method="post"
+        action="{% url url pk %}"
+        class="inline-form"
+        id="form-{{ campo }}-{{ pk }}">
+    {% csrf_token %}
+
+    {% if tipo == 'textarea' %}
+      <textarea name="{{ campo }}" rows="2"
+                {% if campo == 'nombre' %}required{% endif %}>{{ valor }}</textarea>
+    {% elif tipo == 'tel' %}
+      <input type="tel" name="{{ campo }}" value="{{ valor }}"
+             pattern="[0-9+\s\-\(\)]*"
+             title="Solo números, espacios, +, guiones y paréntesis"
+             inputmode="tel">
+    {% else %}
+      <input type="{{ tipo|default:'text' }}" name="{{ campo }}" value="{{ valor }}"
+             {% if campo == 'nombre' %}required maxlength="200"{% endif %}>
+    {% endif %}
+
+    <button type="submit" class="btn-mini primario">Guardar</button>
+    <button type="button" class="btn-mini gris"
+            onclick="cancelarCampo('{{ campo }}', {{ pk }})">Cancelar</button>
+  </form>
+</div>

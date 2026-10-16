@@ -1,0 +1,108 @@
+# ==========================================================
+# PYTHON
+# ==========================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ==========================================================
+# ENTORNO VIRTUAL
+# ==========================================================
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# ==========================================================
+# DJANGO
+# ==========================================================
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+db_backup.sqlite3
+staticfiles/
+media/
+
+# ==========================================================
+# VARIABLES DE ENTORNO
+# ==========================================================
+.env
+.env.*
+!.env.example
+
+# ==========================================================
+# FOTOS DE NEGOCIOS (van por separado al servidor)
+# ==========================================================
+static/img/negocios/
+static/img/_respaldo_imagenes/
+static/img/_respaldo/
+static/img/_descartados/
+static/img/texturas/
+static/img/prueba gemini/
+static/img/referencia/
+
+# ==========================================================
+# CARPETAS DE SCRAPING
+# ==========================================================
+_prueba_fotos/
+_prueba_ig/
+brave_scraper/
+chrome_debug/
+chrome_scraper/
+fb_cookies.json
+
+# ==========================================================
+# DATOS SENSIBLES
+# ==========================================================
+*.xlsx
+*.xls
+*.csv
+!requirements.csv
+
+# ==========================================================
+# BACKUPS
+# ==========================================================
+*.bak
+*.backup
+*.old
+*.tmp
+
+# ==========================================================
+# IDE
+# ==========================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ==========================================================
+# SISTEMA OPERATIVO
+# ==========================================================
+.DS_Store
+Thumbs.db
+desktop.ini
+# Legacy (código viejo del proyecto de puestos)
+_legacy/
